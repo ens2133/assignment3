@@ -8,13 +8,18 @@ https://www.cs.uic.edu/~wilkinson/Applets/cluster.html
 
 
 ```{r}
-library()
+install.packages("ggmap")
+library(ggmap)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(klaR)
 ```
 
 Now, upload the file "Class_Motivation.csv" from the Assignment 3 Repository as a data frame called "K1""
 ```{r}
 
-K1 <- read.csv(...)
+K1 <- read.csv("Class_Motivation.csv")
 
 ```
 
@@ -26,20 +31,20 @@ The algorithm will treat each row as a value belonging to a person, so we need t
 
 ```{r}
 
-K2 <- 
+K2 <- K1[,-1]
 
 ```
 
-It is important to think about the meaning of missing values when clustering. We could treat them as having meaning or we could remove those people who have them. Neither option is ideal. What problems do you foresee if we recode or remove these values? Write your answers below:
+Q1: It is important to think about the meaning of missing values when clustering. We could treat them as having meaning or we could remove those people who have them. Neither option is ideal. What problems do you foresee if we recode or remove these values? Write your answers below:
 
-
+A1: If there are a lot of obersvations with missing values relative to total observations, removing them would make the cluster analysis less accurate. K-means clustering is sensitive to oultiers so this is especially true if removal creates artificial ones. Recoding missing values to expected ones reinforces the existing cluster pattern and removes the possibility of uncovering a more accurate one, ultimately compromising the validity of the model. 
 
 We will remove people with missing values for this assignment, but keep in mind the issues that you have identified.
 
 
 ```{r}
 
-K3 <- na.omit(K2) #This command create a data frame with only those people with no missing values. It "omits" all rows with missing values, also known as a "listwise deletion". EG - It runs down the list deleting rows as it goes.
+K3 <- na.omit(K2) #This command creates a data frame with only those people with no missing values. It "omits" all rows with missing values, also known as a "listwise deletion". EG - It runs down the list deleting rows as it goes.
 
 ```
 
@@ -66,7 +71,7 @@ Also, we need to choose the number of clusters we think are in the data. We will
 
 ```{r}
 
-fit <- 
+fit <- kmeans(K3, 2)
 
 #We have created an object called "fit" that contains all the details of our clustering including which observations belong to each cluster.
 
@@ -76,11 +81,11 @@ fit <-
 
 #We can also attach these clusters to the original dataframe by using the "data.frame" command to create a new data frame called K4.
 
-K4
+K4 <- data.frame(K3, fit$cluster)
 
 #Have a look at the K4 dataframe. Lets change the names of the variables to make it more convenient with the names() command.
 
-
+names(K4) <- c("1","2","3","4","5","cluster")
 ```
 
 Now we need to visualize the clusters we have created. To do so we want to play with the structure of our data. What would be most useful would be if we could visualize average motivation by cluster, by week. To do this we will need to convert our data from wide to long format. Remember your old friends tidyr and dplyr!
@@ -88,14 +93,17 @@ Now we need to visualize the clusters we have created. To do so we want to play 
 First lets use tidyr to convert from wide to long format.
 ```{r}
 
-K5 <- 
+K5 <- gather(K4,"week","motivation",1:5)
 ```
 
 Now lets use dplyr to average our motivation values by week and by cluster.
 
 ```{r}
 
-K6 <- 
+K6 <- K5 %>%
+  group_by(week, cluster)
+  
+K6 <- summarise(K6,avg=mean(motivation))
 
 ```
 
@@ -113,9 +121,9 @@ Likewise, since "cluster" is not numeric but rather a categorical label we want 
 
 ```{r}
 
-K6$week <- 
+K6$week <- as.numeric(K6$week)
 
-K6$cluster <- 
+K6$cluster <- as.factor(K6$cluster)
 
 ```
 
@@ -127,19 +135,33 @@ Now we can plot our line plot using the ggplot command, "ggplot()".
 - Finally we are going to clean up our axes labels: xlab("Week") & ylab("Average Motivation")
 
 ```{r}
-
-
+ggplot(K6, 
+       aes(week,avg, 
+           color = cluster))+ 
+  geom_line()+
+  theme(plot.title = element_text(hjust = 0.5,
+                                  family = "Helvetica",
+                                  face="bold"))+
+  labs(x ="Week",
+       y ="Average Motivation",
+       title="Average Motivation per Week")
 ```
 
-What patterns do you see in the plot?
+Q2: What patterns do you see in the plot?
+
+A2: The 2 cluster plot (Fig. 1) shows more distinct characteristics (cluster 1=lower motivation; cluster 2=higher motivation) between clusters. The 3 cluster plot (Fig. 2) shows some overlap between groups but indicates motivation for the high motivation group (cluster 1) declines after week 4 while that for the moderate motivation group (cluster 3) increases. Also motivation for clusters 1 & 2 seem to fluctuate together whereas cluster 3 is the opposite up to week 4.
 
 It would be useful to determine how many people are in each cluster. We can do this easily with dplyr.
 
 ```{r}
-K7 <- 
+K7 <- count(K4, cluster)
+K7
 ```
 
-Look at the number of people in each cluster, now repeat this process for 3 rather than 2 clusters. Which cluster grouping do you think is more informative? Write your answer below:
+Q3: Look at the number of people in each cluster, now repeat this process for 3 rather than 2 clusters. Which cluster grouping do you think is more informative? Write your answer below:
+
+A3: 3 clusters (7, 7, 9); 2 clusters (7, 16)
+The number of people per cluster is more evenly distributed in the 3 cluster grouping than 2. Although 2 clusters (Fig.1) provide groups with distinct characteristics, 3 clusters (Fig. 2) could be more informative because it shows distinct changes in motivation after week 4 for highly and moderately motivated students (clusters 1 & 3). This information could be used to address student needs to increase and mantain motivation for the high and low motivation groups (clusters 1 & 2) moving forward.
 
 Once you have done this, save both of your plots to the Assignment 5 file. Create a Zotero item to index your new computer program (Assignment 5.rmd) in Zotero. Then commit your assignment, push it to your Github account and then Pull request your version to the original assignment version so I can see it.
 
@@ -147,7 +169,134 @@ Once you have done this, save both of your plots to the Assignment 5 file. Creat
 
 Now, try to do the same for the data collected in class. Create two sets of clusters, the answers to the questions and regions where people grew up. 
 
+#Location Clusters
+
+Data Management (Class Activity 6)
+```{r}
+#Load data
+DF1 <- read.csv("HUDK405018-cluster.csv", header = TRUE)
+  
+#Wrangle data
+DF1.1 <- DF1[-1:-2,-1:-17]
+DF1.1[DF1.1==""] <- NA
+DF1.1 <- DF1.1[complete.cases(DF1.1), ]
+
+#Assign more descriptive column names
+colnames(DF1.1) <- c("City", "Country", "Code", "Write", "Acd Read/Vids", "Vids4Fun", "Cook", "SNS", "Socialize")
+```
+
+Find lattitudes & longitudes for cities (Class Activity 6)
+```{r}
+#Request lattitude and longitude from Google Maps API
+DF2 <- geocode(as.character(DF1.1$City), output = "latlon", source = "dsk")
+```
+
+Form Location Clusters (Class Activity 6)
+```{r}
+#Create kmeans clusters and attaches them to new data frame DF2.1
+locfit <- kmeans(DF2, 4) 
+DF2.1 <- data.frame(DF2, locfit$cluster)
+
+#Easier column names
+names(DF2.1) <- c("long", "lat", "cluster") 
+
+#Cluster colors are more distinct as factors
+DF2.1$cluster <- as.factor(DF2.1$cluster)
+
+#Plot region clusters
+ggplot(DF2.1, 
+       aes(x = DF2.1$long,
+           y = DF2.1$lat,
+           color = DF2.1$cluster,
+           shape = DF2.1$cluster))+
+  geom_point(size = 4)+
+  scale_shape_discrete(solid=F)+
+  theme(plot.title = element_text(hjust = 0.5,
+                                  family = "Helvetica",
+                                  face="bold"))+
+  labs(x = "Longitude",
+       y = "Latitude",
+       color = "Region Cluster",
+       shape = "Region Cluster",
+       title = "Region Clusters by Location")
+```
+
+#Activity CLusters
+
+Create Activity Data Frame
+```{r}
+#Omit City and Country columns
+DF3 <- DF1.1[,-1:-2]
+
+#Convert time values to numeric
+columns <- names(DF3)
+DF3[, columns] <- lapply(columns, function(x) as.numeric(DF3[[x]]))
+```
+
+Form Activity Clusters
+```{r}
+#Create k means clusters by activity
+actfit <- kmeans(DF3, 4)
+
+#Attach activity clusters to data frame DF3.1
+DF3.1 <- data.frame(DF3, actfit$cluster)
+
+#Assign easer column names
+colnames(DF3.1) <- c(c(1:7),"cluster")
+
+#Convert data to long format
+DF3.2 <- gather(DF3.1,'act','time',1:7)
+
+#Average times by activity and activity cluster
+DF3.3 <- DF3.2 %>% group_by(act,cluster)
+DF3.3 <- summarise(DF3.3,avg=mean(time))
+
+#Convert data to desirable class
+DF3.3$act <- as.numeric(DF3.3$act)
+DF3.3$cluster <- as.factor(DF3.3$cluster)
+
+#Plot activity clusters
+ggplot(DF3.3,
+       aes(act,avg,color=cluster))+
+  geom_line()+
+  theme(plot.title = element_text(hjust = 0.5, 
+                                  family = "Helvetica", 
+                                  face="bold"))+
+  labs(x = "Activity:1=Code, 2=Write, 3=Acd Read/Vids, 4=Vids4Fun, 5=Cooking, 6=SNS, 7=Going Out",
+       y = "Average Time (hr)",
+       title = "Average Activity Time per Cluster",
+       color = "Cluster\n")
+```
+
 ##Part III
 
 Create a visualization that shows the overlap between the two groups of clusters you created in part III.
+```{r}
+#Combines DF2.1 and DF3.1 into DF4
+DF4 <- data.frame(DF2.1,DF3.1)
 
+#Change column names
+colnames(DF4)[3] <-"loc_cluster"
+colnames(DF4)[11] <-"act_cluster"
+
+#Convert to factor
+DF4$act_cluster <- as.factor(DF4$act_cluster)
+DF4$loc_cluster <- as.factor(DF4$loc_cluster)
+
+#Plot Region and Activity Clusters by Location
+ggplot(DF4,
+       aes(x = long,
+           y = lat,
+           color = DF4$loc_cluster,
+           shape = DF4$act_cluster))+
+  geom_point(size = 4)+
+  scale_shape_discrete(solid=F)+
+  theme(plot.title = element_text(hjust = 0.5,
+                                  family = "Helvetica",
+                                  face="bold"))+
+  labs(x = "Longitude",
+       y = "Latitude",
+       title = "Region and Activity Clusters by Location",
+       color = "Region Clusters",
+       shape = "Activity Clusters")
+```
