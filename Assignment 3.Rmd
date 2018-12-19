@@ -299,4 +299,10 @@ ggplot(DF4,
        title = "Region and Activity Clusters by Location",
        color = "Region Clusters",
        shape = "Activity Clusters")
+
+#Mosaic Plot
+install.packages("vcd")
+library(vcd)
+DF4.1 <- structable(actfit$cluster ~ locfit$cluster)
+mosaic(DF4.1, shade=TRUE, legend=TRUE)
 ```
